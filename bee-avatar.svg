@@ -1,0 +1,24 @@
+<svg viewBox="0 0 120 120" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Крылья -->
+  <ellipse cx="40" cy="40" rx="18" ry="28" fill="#d6f8ff" opacity="0.7"/>
+  <ellipse cx="80" cy="40" rx="18" ry="28" fill="#d6f8ff" opacity="0.7"/>
+  <!-- Тело пчелы -->
+  <ellipse cx="60" cy="65" rx="32" ry="34" fill="#ffe14f" stroke="#c9a83f" stroke-width="4"/>
+  <!-- Полоски -->
+  <rect x="35" y="60" width="50" height="8" rx="4" fill="#3b2525" opacity="0.3"/>
+  <rect x="39" y="76" width="42" height="7" rx="3.5" fill="#3b2525" opacity="0.3"/>
+  <rect x="45" y="92" width="30" height="7" rx="3" fill="#3b2525" opacity="0.3"/>
+  <!-- Голова -->
+  <ellipse cx="60" cy="38" rx="16" ry="15" fill="#ffe14f" stroke="#c9a83f" stroke-width="3"/>
+  <!-- Глазки -->
+  <ellipse cx="54" cy="39" rx="2.8" ry="4" fill="#222"/>
+  <ellipse cx="66" cy="39" rx="2.8" ry="4" fill="#222"/>
+  <!-- Усики -->
+  <path d="M53 29 Q43 16 60 19" stroke="#222" stroke-width="2" fill="none"/>
+  <path d="M67 29 Q77 16 60 19" stroke="#222" stroke-width="2" fill="none"/>
+  <!-- Ножки -->
+  <path d="M42 90 Q32 108 56 104" stroke="#3b2525" stroke-width="4" fill="none"/>
+  <path d="M78 90 Q88 108 64 104" stroke="#3b2525" stroke-width="4" fill="none"/>
+  <!-- Место под круглую аватарку игрока -->
+  <circle cx="60" cy="105" r="16" fill="#fff" stroke="#ffe14f" stroke-width="4" opacity="0.95"/>
+</svg>

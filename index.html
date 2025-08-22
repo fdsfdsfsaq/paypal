@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Колесо фортуны</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link href="https://fonts.googleapis.com/css?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32'><circle cx='16' cy='16' r='16' fill='%2349b87a'/><text x='50%' y='54%' text-anchor='middle' fill='white' font-size='17' font-family='Arial' dy='.3em'>🎡</text></svg>">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+  <!-- Всплывающее уведомление о победе -->
+  <div id="winner-popup" style="display:none;">
+    <div class="winner-popup-inner">
+      <div id="winner-popup-nick"></div>
+      <div id="winner-popup-gifts"></div>
+    </div>
+  </div>
+
+  <!-- Модальное окно "Нет подарков" -->
+  <div id="no-gifts-modal" class="modal-bg" style="display:none;">
+    <div class="modal-content">
+      <div class="plane-anim">
+        <svg width="60" height="60" viewBox="0 0 48 48" fill="none">
+          <polygon points="2,24 46,6 38,42 24,32 10,36" fill="#fff" stroke="#3e8ed0" stroke-width="2"/>
+          <polyline points="2,24 24,32 46,6" fill="none" stroke="#3e8ed0" stroke-width="2"/>
+        </svg>
+      </div>
+      <div class="modal-text">
+        Подарков пока что нету....<br>
+        Чтобы добавить подарок, отправь его боту<br>
+        <b>@GIFTBOTRELAYER</b>
+      </div>
+      <button class="btn" id="closeNoGiftsModal">Понятно</button>
+    </div>
+  </div>
+
+  <!-- Модальное окно выбора подарка -->
+  <div id="choose-gift-modal" class="modal-bg" style="display:none;">
+    <div class="modal-content">
+      <div class="modal-text" style="font-size:18px;">Выберите подарок для участия:</div>
+      <div id="choose-gift-list" style="margin:18px 0;"></div>
+      <div class="quick-bets">
+        <button class="quick-ton-btn" data-amount="0.5">0.5 TON</button>
+        <button class="quick-ton-btn" data-amount="1">1 TON</button>
+        <button class="quick-ton-btn" data-amount="2">2 TON</button>
+      </div>
+      <button class="btn" id="chooseGiftConfirmBtn" disabled>Поставить</button>
+      <button class="btn danger" id="closeChooseGiftModal" style="margin-top:6px;">Отмена</button>
+    </div>
+  </div>
+
+  <!-- Основной контейнер -->
+  <div class="container">
+    <!-- Бар пользователя Telegram -->
+    <div id="tg-user-bar" style="display:none; padding:10px; background:#2a243d; margin-bottom:10px; border-radius:12px;"></div>
+    
+    <div id="tab-content">
+      <!-- Bee Tab -->
+      <div id="bee" class="tab" style="display:none;">
+        <div id="bee-info-block-cards"></div>
+        <h2 style="text-align:center;">Рой Пчёл 🐝</h2>
+        <div id="bee-bank"></div>
+        <canvas id="bee-canvas"></canvas>
+        <div id="bee-timer"></div>
+        <div class="btn-group">
+          <button class="btn" id="bee-addGiftsBtn">Внести Подарки</button>
+          <button class="btn" id="bee-addTonBtn">Внести TON</button>
+          <button class="btn danger" id="bee-withdrawBtn" style="display:none;">Вывести гифты</button>
+        </div>
+        <div id="bee-players"></div>
+        <div id="bee-winner"></div>
+      </div>
+
+      <!-- PvP Tab -->
+      <div id="pvp" class="tab">
+        <div id="info-block-cards"></div>
+        <button id="openHistoryBtn" class="history-btn" title="История раундов">
+          <img src="history-icon.svg" alt="" style="width:20px;vertical-align:middle;"/>
+        </button>
+        <div id="bank">0 гифтов • 0 TON</div>
+        <canvas id="wheel"></canvas>
+        <div id="timer">Старт через 00:00</div>
+        
+        <!-- Прогресс-бар -->
+        <div style="width: 80%; margin: 10px auto;">
+          <div style="height: 6px; background: #2e293d; border-radius: 3px;">
+            <div id="progress-fill" style="height: 100%; width: 0%; background: #ba8cff; border-radius: 3px; transition: width 0.5s;"></div>
+          </div>
+          <div id="waiting-text" style="font-size: 12px; text-align: center; margin-top: 5px;">Ожидание игроков... (0/2)</div>
+        </div>
+        
+        <div class="btn-group">
+          <button class="btn" id="addGiftsBtn">Внести Подарок</button>
+          <button class="btn" id="addTonBtn">Внести TON</button>
+          <button class="btn danger" id="withdrawBtn" style="display:none;">Вывести гифты</button>
+        </div>
+        <div id="players"></div>
+        <div id="winner"></div>
+      </div>
+
+      <!-- Inventory Tab -->
+      <div id="inventory" class="tab" style="display:none;">
+        <h2>Ваши гифты</h2>
+        <div id="empty-inventory-hint" style="display:none; margin-top:32px;">
+          <div class="plane-anim" style="margin-bottom:14px;">
+            <svg width="60" height="60" viewBox="0 0 48 48" fill="none">
+              <polygon points="2,24 46,6 38,42 24,32 10,36" fill="#fff" stroke="#3e8ed0" stroke-width="2"/>
+              <polyline points="2,24 24,32 46,6" fill="none" stroke="#3e8ed0" stroke-width="2"/>
+            </svg>
+          </div>
+          <div class="modal-text" style="margin:0; font-size:17px;">
+            Подарков пока что нету....<br>
+            Чтобы добавить подарок, отправь его боту<br>
+            <b>@GIFTBOTRELAYER</b>
+          </div>
+        </div>
+        <div id="inventoryList"></div>
+        <button class="btn danger" id="withdrawBtn" style="display:none;">Вывести гифты</button>
+      </div>
+
+      <!-- Profile Tab -->
+      <div id="profile" class="tab" style="display:none;">
+        <div class="profile-card" style="position: relative;">
+          <img id="profile-avatar" src="https://ui-avatars.com/api/?name=Demo" class="profile-avatar" />
+          <div class="profile-info">
+            <div id="profile-username">@demo</div>
+            <div id="profile-earn">Заработано: <span>0 TON</span></div>
+          </div>
+          <div class="theme-switcher" style="margin:15px 0;">
+  <label class="switch">
+    <input type="checkbox" id="theme-toggle" onchange="toggleTheme()">
+    <span class="slider"></span>
+  </label>
+  <span style="margin-left:10px;">Тёмная тема</span>
+</div>
+          <button class="btn" onclick="openReferralModal()" style="margin:15px 0;">
+  💎 Пригласить друзей
+</button>
+          <div id="ton-connect-button" style="position: absolute; top: 12px; right: 12px;"></div>
+        </div>
+        <h3>История побед</h3>
+        <div id="withdraw-history"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно информации -->
+  <div id="modal-info" class="mini-modal" style="display:none;">
+    <div class="mini-modal-content">
+      <div id="modal-info-title" class="mini-modal-title"></div>
+      <div id="modal-info-user" class="mini-modal-user"></div>
+      <div id="modal-info-prize" class="mini-modal-prize"></div>
+      <div id="modal-info-amount" class="mini-modal-amount"></div>
+      <button class="btn" id="closeModalInfo" style="margin-top:18px;">Закрыть</button>
+    </div>
+  </div>
+
+  <!-- Модальное окно истории -->
+  <div id="history-modal" class="modal-bg" style="display:none;">
+    <div class="modal-content">
+      <button id="closeHistoryModal" class="close-btn" style="float:right;font-size:24px;">&times;</button>
+      <h3 style="margin-top:0;">История раундов</h3>
+      <div id="history-list"></div>
+    </div>
+  </div>
+
+  <!-- Нижняя панель навигации -->
+  <div id="tabs-bottom">
+    <button class="tab-btn selected" onclick="showTab('pvp')" id="tab-pvp">PvP</button>
+    <button class="tab-btn" onclick="showTab('bee')" id="tab-bee">Пчела</button>
+    <button class="tab-btn" onclick="showTab('inventory')" id="tab-inventory">Инвентарь</button>
+    <button class="tab-btn" onclick="showTab('profile')" id="tab-profile">Профиль</button>
+  </div>
+
+  <!-- Подключение скриптов -->
+  <script src="https://unpkg.com/@tonconnect/ui/dist/tonconnect-ui.min.js"></script>
+  <script src="app.js"></script>
+  
+  <script>
+    // Инициализация Telegram WebApp
+    window.Telegram.WebApp.ready();
+    const tg = window.Telegram.WebApp;
+    
+    // Глобальные переменные для данных пользователя
+    let TG_USER_ID = 1;
+    let TG_USERNAME = "demo";
+    let TG_AVATAR = "";
+    
+    // Получение данных пользователя из Telegram
+    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+      const tgUser = tg.initDataUnsafe.user;
+      TG_USER_ID = tgUser.id;
+      TG_USERNAME = tgUser.username || tgUser.first_name || `id${TG_USER_ID}`;
+      TG_AVATAR = tgUser.photo_url || "";
+      
+      // Отображение информации о пользователе
+      document.getElementById('tg-user-bar').style.display = 'block';
+      document.getElementById('tg-user-bar').innerHTML = `
+        <div style="display:flex;align-items:center;">
+          <img src="${TG_AVATAR}" style="width:36px;height:36px;border-radius:50%;margin-right:12px;">
+          <span style="font-size:16px;font-weight:600;">@${TG_USERNAME}</span>
+          <span style="font-size:12px;font-weight:400;margin-left:12px;opacity:0.7;">id:${TG_USER_ID}</span>
+        </div>
+      `;
+      
+      // Отправка аватара на сервер
+      if (TG_AVATAR) {
+        fetch(`/api/update_avatar`, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({user_id: TG_USER_ID, avatar: TG_AVATAR})
+        }).catch(() => {});
+      }
+    }
+    
+    // Сделать глобально доступным для app.js
+    window.TG_USER_ID = TG_USER_ID;
+    window.TG_USERNAME = TG_USERNAME;
+    window.TG_AVATAR = TG_AVATAR;
+    
+    // Инициализация приложения после загрузки
+    document.addEventListener('DOMContentLoaded', function() {
+      // Показываем PvP вкладку по умолчанию
+      showTab('pvp');
+      
+      // Инициализация TON Connect
+      if (typeof TON_CONNECT_UI !== 'undefined') {
+        window.tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+          manifestUrl: 'https://paypal.net.ru/tonconnect-manifest.json',
+          buttonRootId: 'ton-connect-button'
+        });
+      }
+    });
+  </script>
+</body>
+</html>
