@@ -905,7 +905,7 @@ function refreshInventory() {
         document.getElementById('withdrawBtn').style.display = 'none';
       } else {
         hint.style.display = 'none';
-        document.getElementById('inventoryList').innerHTML = inv.map(g =>
+document.getElementById('inventoryList').innerHTML = inv.map(g =>
   `<div>
     <img class="gift-img" src="${g.img}" width="40"> ${g.name}
     <span style="margin-left:12px;color:#ffe14f;">${g.price ? g.price + ' TON' : ''}</span>
@@ -916,11 +916,11 @@ function refreshInventory() {
       }
     }).catch(()=>{});
 }
-window.toggleGift = function(id){
-  if(selectedGifts.includes(id)){
-    selectedGifts = selectedGifts.filter(g=>g!==id);
-  }else{
-    selectedGifts.push(id);
+function toggleGift(id) {
+  if (state.selectedGifts.includes(id)) {
+    state.selectedGifts = state.selectedGifts.filter(g => g !== id);
+  } else {
+    state.selectedGifts.push(id);
   }
 }
 
