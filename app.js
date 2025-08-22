@@ -89,6 +89,8 @@ function joinRound(userId, username, betTon, giftIds, userWalletAddress) {
   // 2. ПОКАЗЫВАЕМ ОБРАТНУЮ СВЯЗЬ ЗДЕСЬ! 🎉
   showSuccessFeedback();
 
+  
+
   // 3. Возвращаем Promise из fetch
   return fetch(`${API}/join_round`, {
     method: "POST",
@@ -108,6 +110,14 @@ function joinRound(userId, username, betTon, giftIds, userWalletAddress) {
       updatePlayersUI(LOCAL_ROUND_STATE.players);
       updateBankUI(LOCAL_ROUND_STATE.gifts, LOCAL_ROUND_STATE.bank);
       throw new Error(serverData.reason || "Ставка не принята");
+    }
+    return serverData;
+  })
+
+  .then(serverData => {
+    if (serverData.status === "ok") {
+      // Начисляем проценты рефереру
+      addReferralEarnings(betTon);
     }
     return serverData;
   })
@@ -1345,16 +1355,94 @@ async function sendTonBet(amount) {
 }
 
 // Реферальная система
+// Реферальная система (frontend-only)
 function openReferralModal() {
-  fetch(`${API}/referral/${TG_USER_ID}`)
-    .then(res => res.json())
-    .then(data => {
-      document.getElementById('ref-invited').textContent = data.invited || 0;
-      document.getElementById('ref-earned').textContent = data.earned ? data.earned + ' TON' : '0 TON';
-      document.getElementById('ref-link').value = `https://t.me/your_bot?start=ref_${TG_USER_ID}`;
-      document.getElementById('referral-modal').style.display = '';
-    });
+  // Получаем данные из localStorage
+  const refData = JSON.parse(localStorage.getItem('referral_data') || '{}');
+  const myStats = refData[TG_USER_ID] || { invited: 0, earned: 0 };
+  
+  // Показываем статистику
+  document.getElementById('ref-invited').textContent = myStats.invited || 0;
+  document.getElementById('ref-earned').textContent = (myStats.earned || 0) + ' TON';
+  document.getElementById('ref-link').value = `https://t.me/your_bot?start=ref_${TG_USER_ID}`;
+  document.getElementById('referral-modal').style.display = '';
 }
+
+// Функция копирования ссылки
+function copyRefLink() {
+  const linkInput = document.getElementById('ref-link');
+  linkInput.select();
+  document.execCommand('copy');
+  alert('Ссылка скопирована в буфер!');
+}
+
+// Функция поделиться
+function shareRefLink() {
+  if (window.Telegram && window.Telegram.WebApp) {
+    window.Telegram.WebApp.shareUrl(
+      `https://t.me/your_bot?start=ref_${TG_USER_ID}`,
+      'Присоединяйся к игре и получай бонусы!'
+    );
+  } else {
+    copyRefLink();
+  }
+}
+
+// Проверка реферальной ссылки при загрузке
+function checkRefOnLoad() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const refParam = urlParams.get('ref');
+  
+  if (refParam && refParam.startsWith('ref_')) {
+    const referrerId = refParam.replace('ref_', '');
+    saveReferral(referrerId);
+  }
+}
+
+// Сохранение реферала
+function saveReferral(referrerId) {
+  if (referrerId === TG_USER_ID) return; // Нельзя пригласить себя
+  
+  const refData = JSON.parse(localStorage.getItem('referral_data') || '{}');
+  
+  // Проверяем, не был ли уже приглашен
+  if (!localStorage.getItem('was_referred')) {
+    // Сохраняем кто пригласил
+    localStorage.setItem('was_referred', referrerId);
+    
+    // Обновляем статистику пригласившего
+    if (!refData[referrerId]) {
+      refData[referrerId] = { invited: 0, earned: 0 };
+    }
+    refData[referrerId].invited = (refData[referrerId].invited || 0) + 1;
+    
+    localStorage.setItem('referral_data', JSON.stringify(refData));
+    
+    console.log('Реферал сохранен:', referrerId);
+  }
+}
+
+// Начисление процентов рефереру (вызывать при успешной ставке)
+function addReferralEarnings(amount) {
+  const referrerId = localStorage.getItem('was_referred');
+  if (!referrerId) return;
+  
+  const refData = JSON.parse(localStorage.getItem('referral_data') || '{}');
+  const percent = 0.05; // 5%
+  const earnings = amount * percent;
+  
+  if (!refData[referrerId]) {
+    refData[referrerId] = { invited: 0, earned: 0 };
+  }
+  
+  refData[referrerId].earned = (refData[referrerId].earned || 0) + earnings;
+  localStorage.setItem('referral_data', JSON.stringify(refData));
+  
+  console.log(`Начислено ${earnings} TON рефереру ${referrerId}`);
+}
+
+// Вызвать при загрузке
+checkRefOnLoad();
 
 function copyRefLink() {
   const linkInput = document.getElementById('ref-link');
