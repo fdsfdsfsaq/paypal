@@ -202,65 +202,62 @@
     <button class="tab-btn" onclick="showTab('profile')" id="tab-profile">Профиль</button>
   </div>
 
-  <!-- Подключение скриптов -->
-  <script src="https://unpkg.com/@tonconnect/ui/dist/tonconnect-ui.min.js"></script>
-  <script src="app.js"></script>
+<!-- Подключение скриптов -->
+<script src="https://unpkg.com/@tonconnect/ui/dist/tonconnect-ui.min.js"></script>
+<script src="app.js"></script>
+
+<script>
+  // --- Telegram Mini App User Detection ---
+  window.Telegram.WebApp.ready();
+  const tg = window.Telegram.WebApp;
   
-  <script>
-    // Инициализация Telegram WebApp
-    window.Telegram.WebApp.ready();
-    const tg = window.Telegram.WebApp;
+  // Объявляем переменные только если они не существуют
+  if (typeof window.TG_USER_ID === 'undefined') {
+    window.TG_USER_ID = 1;
+    window.TG_USERNAME = "demo";
+    window.TG_AVATAR = "";
+  }
+
+  // Получаем данные пользователя Telegram
+  if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+    const tgUser = tg.initDataUnsafe.user;
+    window.TG_USER_ID = tgUser.id;
+    window.TG_USERNAME = tgUser.username || tgUser.first_name || `id${tgUser.id}`;
+    window.TG_AVATAR = tgUser.photo_url || "";
     
-    // Глобальные переменные для данных пользователя
-    let TG_USER_ID = 1;
-    let TG_USERNAME = "demo";
-    let TG_AVATAR = "";
+    // Показываем инфо о пользователе
+    document.getElementById('tg-user-bar').style.display = 'block';
+    document.getElementById('tg-user-bar').innerHTML = `
+      <div style="display:flex;align-items:center;">
+        <img src="${window.TG_AVATAR}" style="width:36px;height:36px;border-radius:50%;margin-right:12px;">
+        <span style="font-size:16px;font-weight:600;">@${window.TG_USERNAME}</span>
+        <span style="font-size:12px;font-weight:400;margin-left:12px;opacity:0.7;">id:${window.TG_USER_ID}</span>
+      </div>
+    `;
     
-    // Получение данных пользователя из Telegram
-    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-      const tgUser = tg.initDataUnsafe.user;
-      TG_USER_ID = tgUser.id;
-      TG_USERNAME = tgUser.username || tgUser.first_name || `id${TG_USER_ID}`;
-      TG_AVATAR = tgUser.photo_url || "";
-      
-      // Отображение информации о пользователе
-      document.getElementById('tg-user-bar').style.display = 'block';
-      document.getElementById('tg-user-bar').innerHTML = `
-        <div style="display:flex;align-items:center;">
-          <img src="${TG_AVATAR}" style="width:36px;height:36px;border-radius:50%;margin-right:12px;">
-          <span style="font-size:16px;font-weight:600;">@${TG_USERNAME}</span>
-          <span style="font-size:12px;font-weight:400;margin-left:12px;opacity:0.7;">id:${TG_USER_ID}</span>
-        </div>
-      `;
-      
-      // Отправка аватара на сервер
-      if (TG_AVATAR) {
-        fetch(`/api/update_avatar`, {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({user_id: TG_USER_ID, avatar: TG_AVATAR})
-        }).catch(() => {});
-      }
+    // Отправка аватара на сервер
+    if (window.TG_AVATAR) {
+      fetch(`/api/update_avatar`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({user_id: window.TG_USER_ID, avatar: window.TG_AVATAR})
+      }).catch(() => {});
     }
+  }
+  
+  // Инициализация приложения после загрузки
+  document.addEventListener('DOMContentLoaded', function() {
+    // Показываем PvP вкладку по умолчанию
+    showTab('pvp');
     
-    // Сделать глобально доступным для app.js
-    window.TG_USER_ID = TG_USER_ID;
-    window.TG_USERNAME = TG_USERNAME;
-    window.TG_AVATAR = TG_AVATAR;
-    
-    // Инициализация приложения после загрузки
-    document.addEventListener('DOMContentLoaded', function() {
-      // Показываем PvP вкладку по умолчанию
-      showTab('pvp');
-      
-      // Инициализация TON Connect
-      if (typeof TON_CONNECT_UI !== 'undefined') {
-        window.tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-          manifestUrl: 'https://paypal.net.ru/tonconnect-manifest.json',
-          buttonRootId: 'ton-connect-button'
-        });
-      }
-    });
-  </script>
+    // Инициализация TON Connect
+    if (typeof TON_CONNECT_UI !== 'undefined') {
+      window.tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+        manifestUrl: 'https://paypal.net.ru/tonconnect-manifest.json',
+        buttonRootId: 'ton-connect-button'
+      });
+    }
+  });
+</script>
 </body>
 </html>

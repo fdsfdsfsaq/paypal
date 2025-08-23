@@ -581,6 +581,12 @@ function fetchRoundState() {
   fetch(`${API}/round_state`).then(res => res.json()).then(data => {
     console.log('ROUND STATE:', data); // <-- добавь сюда
     roundData = data;
+     if (data.winner) {
+      data.players = data.players.map(player => ({
+        ...player,
+        is_winner: player.user_id === data.winner.user_id
+      }));
+    }
     updateBankUI(data.gifts, data.bank);
     updatePlayersUI(data.players);
     wheelState.players = data.players;
@@ -1478,25 +1484,20 @@ function toggleTheme() {
   localStorage.setItem('theme', theme);
 }
 
-// Пометить победителя
-if (data.winner) {
-  data.players = data.players.map(player => ({
-    ...player,
-    is_winner: player.user_id === data.winner.user_id
-  }));
+// Проверка реферала из URL
+function checkRefParameter() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const ref = urlParams.get('ref');
+  
+  if (ref && ref.startsWith('ref_')) {
+    const referrerId = ref.replace('ref_', '');
+    localStorage.setItem('referrer', referrerId);
+    console.log('Реферал обнаружен:', referrerId);
+  }
 }
 
-// При команде /start с рефералом
-bot.onText(/\/start ref_(\d+)/, (msg, match) => {
-  const userId = msg.from.id;
-  const referrerId = match[1]; // ID того, кто пригласил
-  
-  // Сохранить реферала в базу
-  saveReferral(userId, referrerId);
-  
-  // Отправить приветственное сообщение
-  bot.sendMessage(userId, '🎉 Добро пожаловать!');
-});
+// Вызвать при загрузке
+checkRefParameter();
 
 // Генерация правильной реферальной ссылки
 function generateRefLink() {
