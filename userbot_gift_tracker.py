@@ -3,73 +3,82 @@ import requests
 import os
 import re
 
-api_id = os.getenv('API_ID')  # <-- твой api_id
-api_hash = os.getenv('API_HASH')  # <-- твой api_hash
-phone = '+48 577 086 767'  # <-- твой номер
+# Примерные настройки
+api_id = os.getenv('API_ID')
+api_hash = os.getenv('API_HASH')
+phone = '+48 577 086 767' # Номер телефона аккаунта @GIFTBOTRELAYER
 
-BACKEND_API = "https://paypal.net.ru/api/deposit_gift"
-MEDIA_SAVE_PATH = 'media/'
+# Подключение к БД
+import mysql.connector
+db = mysql.connector.connect(
+    host="ваш_хост_timeweb",
+    user="ваш_пользователь",
+    password="ваш_пароль",
+    database="ваша_бд"
+)
+cursor = db.cursor()
 
-client = TelegramClient('session_userbot', api_id, api_hash)
+from telethon import TelegramClient, events
+import re
 
-def parse_gift_caption(text):
-    # Пример caption:
-    # "Сохранённый подарок\nWinter Wreath #14182\nМодель Barbie Core\nФон Copper\nУзор Candy"
-    lines = text.split('\n')
-    gift_info = {}
-    # Поиск основной строки с названием и номером
-    match = re.search(r'(.+?)\s*#(\d+)', text)
-    if match:
-        gift_info['name'] = match.group(1).strip()
-        gift_info['number'] = match.group(2)
-    else:
-        gift_info['name'] = "Unknown Gift"
-        gift_info['number'] = "0"
-    # Дополнительные параметры
-    for line in lines:
-        if line.startswith('Модель'):
-            gift_info['model'] = line.replace('Модель', '').strip()
-        if line.startswith('Фон'):
-            gift_info['background'] = line.replace('Фон', '').strip()
-        if line.startswith('Узор'):
-            gift_info['pattern'] = line.replace('Узор', '').strip()
-    return gift_info
+client = TelegramClient('giftbot_relayer_session', api_id, api_hash)
 
-@client.on(events.NewMessage(incoming=True))
-async def handler(event):
-    sender = await event.get_sender()
-    user_id = sender.id
-    username = sender.username or f"id{user_id}"
+# ЗАДАЧА 1: Обработка ВНОСА подарков (игрок переслал подарок на @GIFTBOTRELAYER)
+@client.on(events.NewMessage(incoming=True, pattern=re.compile(r'Подарок от', re.IGNORECASE)))
+async def handler_new_deposit(event):
+    # Проверяем, что сообщение переслано от нашего бота
+    if event.message.fwd_from and event.message.fwd_from.from_id:
+        # Парсим данные из текста сообщения
+        text = event.message.text
+        lines = text.split('\n')
 
-    # Проверяем, что есть медиа и подпись с нужной фразой
-    if event.media and event.text and "Сохранённый подарок" in event.text:
-        # Парсим инфу о подарке
-        gift_info = parse_gift_caption(event.text)
-        if not os.path.exists(MEDIA_SAVE_PATH):
-            os.makedirs(MEDIA_SAVE_PATH)
-        file_path = await event.download_media(file=MEDIA_SAVE_PATH)
-        # Загружаем на telegra.ph
-        with open(file_path, 'rb') as f:
-            resp = requests.post('https://telegra.ph/upload', files={'file': f})
-        if resp.ok and resp.json():
-            img_url = 'https://telegra.ph' + resp.json()[0]['src']
-        else:
-            img_url = "https://ui-avatars.com/api/?name=Gift"
-        gift = {
-            "id": f"gift_{user_id}_{event.id}",
-            "name": f"{gift_info.get('name', 'NFT Gift')} #{gift_info.get('number','')}",
-            "img": img_url,
-            "model": gift_info.get('model',''),
-            "background": gift_info.get('background',''),
-            "pattern": gift_info.get('pattern','')
-        }
-        payload = {
-            "user_id": user_id,
-            "username": username,
-            "gift": gift
-        }
-        requests.post(BACKEND_API, json=payload)
-        print(f"NFT-подарок @{username} ({user_id}) добавлен! {img_url} - {gift['name']}")
+        # Извлекаем данные с помощью re (упрощенно)
+        gift_name_match = re.search(r'- (.*?) #(\d+)', lines[1])
+        model_match = re.search(r'- (.*)', lines[2])
+        background_match = re.search(r'- (.*)', lines[3])
+        pattern_match = re.search(r'- (.*)', lines[4])
 
-client.start(phone)
-client.run_until_disconnected()
+        if all([gift_name_match, model_match, background_match, pattern_match]):
+            gift_name = gift_name_match.group(1).strip()
+            gift_unique_id = gift_name_match.group(2).strip()
+            gift_model = model_match.group(1).strip()
+            gift_background = background_match.group(1).strip()
+            gift_pattern = pattern_match.group(1).strip()
+
+            # ID исходного отправителя (игрока) из пересланного сообщения
+            user_id = event.message.fwd_from.from_id.user_id
+
+            # Сохраняем в БД
+            sql = """INSERT INTO gifts (user_id, gift_name, gift_unique_id, gift_model, gift_background, gift_pattern, status, message_id, chat_id)
+                     VALUES (%s, %s, %s, %s, %s, %s, 'active', %s, %s)"""
+            val = (user_id, gift_name, gift_unique_id, gift_model, gift_background, gift_pattern, event.message.id, event.chat_id)
+            cursor.execute(sql, val)
+            db.commit()
+            print(f"Добавлен подарок {gift_name} #{gift_unique_id} от пользователя {user_id}")
+
+# ЗАДАЧА 2: Обработка ВЫВОДА подарков (Вы вручную переслали подарок игроку)
+@client.on(events.NewMessage(outgoing=True))
+async def handler_withdraw_sent(event):
+    # Если это пересланное сообщение и оно адресовано пользователю (а не в группу/канал)
+    if event.message.fwd_from and isinstance(event.message.peer_id, PeerUser):
+        # Получаем ID исходного сообщения, которое мы переслали
+        original_message_id = event.message.fwd_from.channel_post or event.message.fwd_from.from_id
+        original_chat_id = event.message.fwd_from.from_id  # Или другое поле, важно найти связь
+
+        # Ищем этот подарок в БД по message_id и chat_id
+        sql = "SELECT id, gift_name, gift_unique_id FROM gifts WHERE message_id = %s AND chat_id = %s AND status = 'withdraw_requested'"
+        cursor.execute(sql, (original_message_id, original_chat_id))
+        gift_to_withdraw = cursor.fetchone()
+
+        if gift_to_withdraw:
+            gift_db_id, gift_name, gift_id = gift_to_withdraw
+            # УДАЛЯЕМ запись из БД, так как вывод выполнен!
+            delete_sql = "DELETE FROM gifts WHERE id = %s"
+            cursor.execute(delete_sql, (gift_db_id,))
+            db.commit()
+            print(f"Подарок {gift_name} #{gift_id} выведен и удален из БД!")
+            # Или меняем статус: UPDATE gifts SET status='withdrawn' WHERE id=%s
+
+# Запускаем клиента
+with client:
+    client.run_until_disconnected()

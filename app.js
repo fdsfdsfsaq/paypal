@@ -1236,6 +1236,7 @@ function renderHistoryList(history) {
   `).join('');
 }
 
+
 document.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('keydown', function(e) {
   // F12, Ctrl+Shift+I, Ctrl+U, Ctrl+S
@@ -1370,7 +1371,7 @@ function openReferralModal() {
   // Показываем статистику
   document.getElementById('ref-invited').textContent = myStats.invited || 0;
   document.getElementById('ref-earned').textContent = (myStats.earned || 0) + ' TON';
-  document.getElementById('ref-link').value = `https://t.me/your_bot?start=ref_${TG_USER_ID}`;
+  document.getElementById('ref-link').value = `https://t.me/ROYALPVP_BOT?start=ref_${TG_USER_ID}`;
   document.getElementById('referral-modal').style.display = '';
 }
 
@@ -1386,7 +1387,7 @@ function copyRefLink() {
 function shareRefLink() {
   if (window.Telegram && window.Telegram.WebApp) {
     window.Telegram.WebApp.shareUrl(
-      `https://t.me/your_bot?start=ref_${TG_USER_ID}`,
+      `https://t.me/ROYALPVP_BOT?start=ref_${TG_USER_ID}`,
       'Присоединяйся к игре и получай бонусы!'
     );
   } else {
@@ -1460,7 +1461,7 @@ function copyRefLink() {
 function shareRefLink() {
   if (window.Telegram && window.Telegram.WebApp) {
     window.Telegram.WebApp.shareUrl(
-      `https://t.me/your_bot?start=ref_${TG_USER_ID}`,
+      `https://t.me/ROYALPVP_BOT?start=ref_${TG_USER_ID}`,
       'Присоединяйся к игре и получай бонусы!'
     );
   } else {
